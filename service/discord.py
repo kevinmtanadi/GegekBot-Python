@@ -2,10 +2,13 @@ import discord
 from discord.ext import commands
 import os
 from youtube_search import YoutubeSearch 
-from pytube import YouTube
 import copy
-import pytube
 from asyncio import sleep
+
+import sys
+sys.path.append('./pytube')
+import pytube
+from pytube import YouTube
 
 from helper import *
 from service.spotify import Spotify
@@ -60,8 +63,8 @@ class DiscordBot:
         voice_client = discord.utils.get(ctx.bot.voice_clients, guild=ctx.guild)
         return voice_client and voice_client.is_connected()
     
-    def playMusic(self, voice, filename):
-        voice.play(discord.FFmpegPCMAudio(source=filename))
+    def playMusic(self, voice):
+        voice.play(discord.FFmpegPCMAudio(source=self.filename))
         
     async def add(self, ctx, *, url: str):
         id = 0
@@ -165,7 +168,7 @@ class DiscordBot:
             await channel.connect()
         except:
             print("Bot already connected")
-            
+
         voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
 
         if voice is None or not voice.is_connected():
@@ -174,33 +177,34 @@ class DiscordBot:
         while len(self.songQueue) > 0:
             self.currentSong = self.songQueue[0]
 
-        success = False
-        try:
-            yt = YouTube(self.currentSong.url)
-            audio = yt.streams.filter(only_audio=True).first()
-            out_file = audio.download(output_path=".")
-            success = True
-        except pytube.exceptions.RegexMatchError:
-            await self.sendEmbed(ctx, "Cannot download song, need to fix pytube library regex. Hubungi GEGEK", discord.Color.red())
-            self.songQueue.clear()
-            return
-        except pytube.exceptions.AgeRestrictedError:
-            await self.sendEmbed(ctx, "Current song **" + yt.title + "** is age restricted", discord.Color.red())
+            success = False
+            try:
+                print(self.currentSong.url)
+                yt = YouTube(self.currentSong.url)
+                audio = yt.streams.filter(only_audio=True).first()
+                out_file = audio.download(output_path=".")
+                success = True
+            except pytube.exceptions.RegexMatchError:
+                await self.sendEmbed(ctx, "Cannot download song, need to fix pytube library regex. Hubungi GEGEK", discord.Color.red())
+                self.songQueue.clear()
+                return
+            except pytube.exceptions.AgeRestrictedError:
+                await self.sendEmbed(ctx, "Current song **" + yt.title + "** is age restricted", discord.Color.red())
 
-        if success:
-            os.rename(out_file, self.filename)
-            await self.sendEmbed(ctx, "Currently playing **" + yt.title + "**", discord.Color.blue())
-            self.playMusic(voice)
-            
-            while self.currentSong.length > 0:
-                await sleep(1)
-                self.currentSong.length -= 1
+            if success:
+                os.rename(out_file, self.filename)
+                await self.sendEmbed(ctx, "Currently playing **" + yt.title + "**", discord.Color.blue())
+                self.playMusic(voice)
+                
+                while self.currentSong.length > 0:
+                    await sleep(1)
+                    self.currentSong.length -= 1
 
-            if self.isLooping:
-                self.songQueue.append(self.currentSong)
+                if self.isLooping:
+                    self.songQueue.append(self.currentSong)
 
-            self.songQueue.pop(0)
-            os.remove(self.filename)
+                self.songQueue.pop(0)
+                os.remove(self.filename)
 
         await voice.disconnect()
     
@@ -242,7 +246,7 @@ class DiscordBot:
             return
         
         if self.currentSong.requester != author:
-            await self.sendEmbed(ctx, "Song can only be skipped by the requester : " + self.currentSong.requester, discord.Color.red())
+            await self.sendEmbed(ctx, "Song can only be skipped by the requester : " + self.currentSong.requester.name, discord.Color.red())
             return
         
         currentSong = self.songQueue[0]

@@ -6,10 +6,19 @@ from keep_alive import Keep_alive
 
 from service.discord import DiscordBot
 
+#################################################################################
+# import sys
+# sys.path.append('./pytube')
+# import pytube
+# from pytube import YouTube
+# yt = YouTube("https://www.youtube.com/watch?v=8_TYFfkc_1U")
+# audio = yt.streams.filter(only_audio=True).first()
+# out_file = audio.download(output_path=".")
+#################################################################################
+
 Keep_alive()
 
 load_dotenv()
-
 isDevelopment = os.getenv("IS_DEVELOPMENT")
 bot = DiscordBot(isDevelopment)
 client = bot.client
@@ -48,8 +57,10 @@ async def skip(ctx):
 
 @client.event
 async def on_voice_state_update(member, before, after):
-    await bot.on_voice_state_update(member, before, after)
+    await bot.on_voice_state_update(member)
 
 bot.run()
 
 FFMPEG_PATH = '/home/runner/libopus/node_modules/ffmpeg-static/ffmpeg'
+
+# pytube.exceptions.RegexMatchError: __init__: could not find match for ^\w+\W
