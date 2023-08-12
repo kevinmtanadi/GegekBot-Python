@@ -42,7 +42,7 @@ class DiscordBot:
         self.intents = discord.Intents.all()
         self.intents.voice_states = True
         self.client = commands.Bot(command_prefix="!", intents=self.intents)
-        if not isDevelopment:
+        if isDevelopment == 0 or isDevelopment == "0":
             discord.opus.load_opus("./libopus.so.0.8.0")
         self.isLooping = False
         self.songQueue = []
