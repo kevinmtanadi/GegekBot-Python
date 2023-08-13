@@ -4,6 +4,7 @@ import os
 from youtube_search import YoutubeSearch 
 import copy
 from asyncio import sleep
+import json
 
 import sys
 sys.path.append('./pytube')
@@ -261,7 +262,18 @@ class DiscordBot:
         if arg > len(self.songQueue):
             await self.sendEmbed(ctx, "There are only " + str(len(self.songQueue)) + "songs in the queue!", discord.Color.red())
         else:
+            author = ctx.message.author
             songToDelete = self.songQueue[arg - 1]
+            if author != songToDelete.requester:
+                await self.sendEmbed(ctx, "Song can only be skipped by the requester : " + self.currentSong.requester.name, discord.Color.red())
+                return
+            
             self.songQueue.remove(songToDelete)
             await self.sendEmbed(ctx, "Successfully deleted " + str(songToDelete.title) + " from to queue", discord.Color.blue())
       
+    async def favorite(self, ctx, arg):
+        with open('./favorite.json') as f:
+            data = json.load(f)
+        
+        
+        print(data)

@@ -16,6 +16,20 @@ from service.discord import DiscordBot
 # out_file = audio.download(output_path=".")
 #################################################################################
 
+import json
+
+class FavoriteSong:
+    def __init__(self, requester, songs):
+        self.requester = requester
+        self.songs = songs
+
+with open('./favorite.json') as f:
+    data = json.load(f)
+
+data = data['data']
+
+#################################################################################
+
 Keep_alive()
 
 load_dotenv()
@@ -63,4 +77,3 @@ bot.run()
 
 FFMPEG_PATH = '/home/runner/libopus/node_modules/ffmpeg-static/ffmpeg'
 
-# pytube.exceptions.RegexMatchError: __init__: could not find match for ^\w+\W
