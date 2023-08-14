@@ -15,8 +15,9 @@ from pytube import YouTube
 
 from helper import *
 from service.spotify import Spotify
-from model.song import Song
 from service.youtube import Youtube
+from model.song import Song
+from model.reminder import Reminder
 
 class HelpCommands:
     def __init__(self, commands, helpMessage):
@@ -308,6 +309,7 @@ class DiscordBot:
             with open('./favorite.json', 'w') as f:
                 json.dump(data, f)
             await self.sendEmbed(ctx, "Successfully added " + song.title + " to " + author.name + "'s favorites", discord.Color.blue())
+            
         elif command == "remove":
             query = " ".join(args[1:]).strip()
             index = -1
@@ -349,6 +351,43 @@ class DiscordBot:
                 songList += str(i) + ". " + song['title'] + "\n"
                 i += 1
             await self.sendEmbed(ctx, songList, discord.Color.blue())
+    
+    async def addReminder(self, ctx, *, arg):
+        author = ctx.author
+        
+        args = arg.split(" ")
+        if len(args) == 0:
+            await self.sendEmbed(ctx, "Please provide a message and a datetime", discord.Color.red())
+            return
+
+        try:
+            with open('./reminder.json') as f:
+                notes = json.load(f)
+        except json.decoder.JSONDecodeError:
+            notes = {'data': []}
+
+        reminderDict = {}
+        for note in notes['data']:
+            requester = note['requester']
+            reminderDict[requester] = [note['message'], note['datetime']]
+        
+        message = args[0]
+        datetime = args[1]
+
+        reminder = Reminder(ctx.message.author.id, message, datetime)
+
+        if author.id in reminderDict:
+            reminderDict[author.id].append({"requester": author.id, "message": reminder.message, "datetime": reminder.datetime})
+        else :
+            reminderDict[author.id] = [{"requester": author.id, "message": reminder.message, "datetime": reminder.datetime}]
+        
+        data = {"data":[]}
+        for requester, (message, datetime) in notes.items():
+            data["data"].append({"requester": requester, "message": message, "datetime": datetime})
+
+        with open('./reminder.json', 'w') as f:
+            json.dump(data, f)
+        await self.sendEmbed(ctx, "Added new reminder", discord.Color.blue())
     
     def getSong(self, url):
         if isSpotify(url):
