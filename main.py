@@ -15,27 +15,27 @@ from service.discord import DiscordBot
 # out_file = audio.download(output_path=".")
 #################################################################################
 
-import json
+# import json
 
-class FavoriteSong:
-    def __init__(self, requester, songs):
-        self.requester = requester
-        self.songs = songs
+# class FavoriteSong:
+#     def __init__(self, requester, songs):
+#         self.requester = requester
+#         self.songs = songs
 
-with open('./favorite.json') as f:
-    favorites = json.load(f)
+# with open('./favorite.json') as f:
+#     favorites = json.load(f)
 
-favoriteDict = {}
-for fav in favorites['data']:
-    requester = fav['requester']
-    favoriteDict[requester] = fav['songs']
+# favoriteDict = {}
+# for fav in favorites['data']:
+#     requester = fav['requester']
+#     favoriteDict[requester] = fav['songs']
 
-print(favoriteDict['Gegek'])
+# print(favoriteDict['Gegek'])
         
 
 #################################################################################
 
-isTesting = 0
+isTesting = 1
 if isTesting != 0:
     Keep_alive()
 
@@ -47,6 +47,9 @@ if isTesting != 0:
     @client.command()
     async def add(ctx, *, url: str):
         await bot.add(ctx, url=url)
+    @client.command()
+    async def a(ctx, *, url: str):
+        await bot.add(ctx, url=url)
         
     @client.command()
     async def loop(ctx):
@@ -55,26 +58,55 @@ if isTesting != 0:
     @client.command()
     async def play(ctx):
         await bot.play(ctx)
+    @client.command()
+    async def p(ctx):
+        await bot.play(ctx)
+
 
     @client.command()
     async def queue(ctx):
+        await bot.queue(ctx)
+    @client.command()
+    async def q(ctx):
         await bot.queue(ctx)
 
     @client.command()
     async def stop(ctx):
         await bot.stop(ctx)
+    @client.command()
+    async def x(ctx):
+        await bot.stop(ctx)
         
     @client.command()
     async def clear(ctx):
+        await bot.clear(ctx)
+    @client.command()
+    async def c(ctx):
         await bot.clear(ctx)
         
     @client.command()
     async def remove(ctx, arg: int):
         await bot.remove(ctx, arg)
+    @client.command()
+    async def r(ctx, arg: int):
+        await bot.remove(ctx, arg)
 
     @client.command()
     async def skip(ctx):
         await bot.skip(ctx)
+    @client.command()
+    async def s(ctx):
+        await bot.skip(ctx)
+    
+    @client.command()
+    async def favorite(ctx, arg):
+        await bot.favorite(ctx, arg)
+    @client.command()
+    async def fav(ctx, arg):
+        await bot.favorite(ctx, arg)
+    @client.command()
+    async def f(ctx, arg):
+        await bot.favorite(ctx, arg)
 
     @client.event
     async def on_voice_state_update(member, before, after):
