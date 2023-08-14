@@ -45,6 +45,10 @@ if isTesting != 0:
     client = bot.client
 
     @client.command()
+    async def help(ctx):
+        await bot.help(ctx)
+
+    @client.command()
     async def add(ctx, *, url: str):
         await bot.add(ctx, url=url)
     @client.command()

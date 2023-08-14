@@ -22,3 +22,16 @@ def formatDuration(length):
   duration = f"{m:02d}:{s:02d}"
 
   return duration
+
+def formatHelpString(function):
+  message = ""
+  for func in function:
+    for i, opt in enumerate(func.commands):
+      message += "**" + opt + "**"
+      if i < len(func.commands)-1:
+        message += " | "
+    message += "\n"
+    message += "*" + func.helpMessage + "*"
+    message += "\n"
+  
+  return message

@@ -18,11 +18,18 @@ from service.spotify import Spotify
 from model.song import Song
 from service.youtube import Youtube
 
+class HelpCommands:
+    def __init__(self, commands, helpMessage):
+        self.commands = commands
+        self.helpMessage = helpMessage
+
 class DiscordBot:
+
     def __init__(self, isDevelopment):
         self.intents = discord.Intents.all()
         self.intents.voice_states = True
         self.client = commands.Bot(command_prefix="!", intents=self.intents)
+        self.client.remove_command('help')
         if isDevelopment == 0 or isDevelopment == "0":
             discord.opus.load_opus("./libopus.so.0.8.0")
         self.isLooping = False
@@ -35,8 +42,8 @@ class DiscordBot:
     def run(self):
         self.client.run(os.getenv("DISCORD_BOT_TOKEN"))
         
-    async def sendEmbed(self, ctx, message, color, author=None):
-        embed = discord.Embed(description=message, color=color, )
+    async def sendEmbed(self, ctx, message, color, author=None, title=None):
+        embed = discord.Embed(title=title, description=message, color=color, )
         if author:
             embed.set_footer(text="Requested by {}".format(author.name), icon_url=author.avatar_url)
         await ctx.send(embed=embed)
@@ -49,8 +56,19 @@ class DiscordBot:
         voice.play(discord.FFmpegPCMAudio(source=self.filename))
 
     async def help(self, ctx):
-        await self.sendEmbed(ctx, "Not implemented yet", discord.Color.gold())
-        
+        addHelp = HelpCommands(["add", "a"], "Add a new song to the song queue. It can receive title of the song, youtube link, or spotify link")
+        playHelp = HelpCommands(["play", "p"], "Play song from the song queue")
+        skipHelp = HelpCommands(["skip", "s"], "Skip the current song")
+        clearHelp = HelpCommands(["clear", "c"], "Clear the song queue")
+        stopHelp = HelpCommands(["stop", "x"], "Stop playing songs, clear the song queue and reset bot status")
+        loopHelp = HelpCommands(["loop", "l"], "Loop the song queue. When bot is looping, user cannot add or remove new song")
+        queueHelp = HelpCommands(["queue", "q"], "Show the song queue")
+        removeHelp = HelpCommands(["remove", "r"], "Remove a song from the song queue. Use index from the **!q** command")
+        favoriteHelp = HelpCommands(["favorite", "fav", "f"], "Your own personal favorite song list\nadd\t : Add song to your favorite song list\nplay\t: Play your favorite song list\nlist\t : Show your favorite song list\nremove\t : Remove a song from your favorite song list")
+        commands = [addHelp, playHelp, skipHelp, clearHelp, stopHelp, loopHelp, queueHelp, removeHelp, favoriteHelp]
+        helpMessage = formatHelpString(commands)
+        await self.sendEmbed(ctx, helpMessage, discord.Color.red(), title="GegekBot")
+
     async def add(self, ctx, *, url: str):
         id = 0
         author = ctx.message.author
@@ -340,3 +358,4 @@ class DiscordBot:
             return self.youtube.getVideoData(url)
         else:
             return self.youtube.search(url)
+    
