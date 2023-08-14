@@ -110,7 +110,7 @@ if isTesting != 0:
 
     @client.event
     async def on_voice_state_update(member, before, after):
-        await bot.on_voice_state_update(member)
+        await bot.on_voice_state_update(member, before, after)
 
     bot.run()
 

@@ -90,8 +90,25 @@ class DiscordBot:
             duration = f"{m:02d}:{s:02d}"
             await self.sendEmbed(ctx, successMessage.format(yt.title, duration), discord.Color.blue(), author=author)
             
-    
-    async def on_voice_state_update(self, member):
+    async def addBulk(self, ctx, songs):
+        author = ctx.message.author
+        voiceChannel = author.voice
+
+        if self.isLooping:
+            await self.sendEmbed(ctx, "Stop the loop using /loop before adding any new song", discord.Color.red())
+            return
+
+        try:
+            for s in songs:
+                yt = YouTube(s['url'])
+                song = Song()
+                song.setData(title=yt.title, url=s['url'], length=yt.length)
+                self.songQueue.append(song)
+            return True
+        except:
+            return False
+
+    async def on_voice_state_update(self, member, before, after):
         voice_state = member.guild.voice_client
         if voice_state is None:
             # Exiting if the bot it's not connected to a voice channel
@@ -273,8 +290,7 @@ class DiscordBot:
             query = " ".join(args[1:])
             if query != "random":
                 if author.id in favoriteDict:
-                    for song in favoriteDict[author.id]:
-                        await self.add(ctx, url=song['url'])
+                    await self.addBulk(ctx, favoriteDict[author.id])
                     await self.sendEmbed(ctx, "Successfully added all favorite songs from " + author.name + "", discord.Color.blue())
                 else :
                     await self.sendEmbed(ctx, "You don't have any favorite song", discord.Color.red())
@@ -282,8 +298,7 @@ class DiscordBot:
                 songs = copy.deepcopy(favoriteDict[author.id])
                 random.shuffle(songs)
                 if author.id in favoriteDict:
-                    for song in songs:
-                        await self.add(ctx, url=song['url'])
+                    await self.addBulk(ctx, songs)
                     await self.sendEmbed(ctx, "Successfully added all favorite songs from " + author.name + " randomly", discord.Color.blue())
                 else :
                     await self.sendEmbed(ctx, "You don't have any favorite song", discord.Color.red())
