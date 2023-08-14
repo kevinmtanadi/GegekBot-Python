@@ -5,6 +5,7 @@ from youtube_search import YoutubeSearch
 import copy
 from asyncio import sleep
 import json
+import argparse
 
 import sys
 sys.path.append('./pytube')
@@ -37,6 +38,11 @@ class Song:
         
         if requester != None:
             self.requester = requester
+
+class FavoriteSong:
+    def __init__(self, requester, songs):
+        self.requester = requester
+        self.songs = songs
 
 class DiscordBot:
     def __init__(self, isDevelopment):
@@ -196,10 +202,11 @@ class DiscordBot:
                 os.rename(out_file, self.filename)
                 await self.sendEmbed(ctx, "Currently playing **" + yt.title + "**", discord.Color.blue())
                 self.playMusic(voice)
+                duration = copy.deepcopy(self.currentSong.length)
                 
-                while self.currentSong.length > 0:
+                while duration > 0:
                     await sleep(1)
-                    self.currentSong.length -= 1
+                    duration -= 1
 
                 if self.isLooping:
                     self.songQueue.append(self.currentSong)
@@ -272,8 +279,52 @@ class DiscordBot:
             await self.sendEmbed(ctx, "Successfully deleted " + str(songToDelete.title) + " from to queue", discord.Color.blue())
       
     async def favorite(self, ctx, arg):
+        author = ctx.message.author
+
+        parser = argparse.ArgumentParser(description='Favorite Command Parser')
+        parser.add_argument('--add', nargs='+', metavar='song_url', help='Add a song to favorites')
+        parser.add_argument('--play', action='store_true', help='Play all songs in favorites')
+        parser.add_argument('--remove', metavar='song_url', help='Remove a song from favorites')
+        parser.add_argument('--list', action='store_true', help='List all favorite songs')
+
+        args = parser.parse_args(arg.split())
+
         with open('./favorite.json') as f:
-            data = json.load(f)
+            favorites = json.load(f)
+
+        favoriteDict = {}
+        for fav in favorites['data']:
+            requester = fav['requester']
+            favoriteDict[requester] = fav['songs']
         
-        
-        print(data)
+        currentFav = favoriteDict[author.id]
+
+        if args.play:            
+            if author.id in favoriteDict:
+                for song in favoriteDict[author.id]:
+                    await self.add(ctx, song)
+                self.sendEmbed(ctx, "Successfully added all favorite songs from " + author.name + "", discord.Color.blue())
+            else :
+                await self.sendEmbed(ctx, "You don't have any favorite song", discord.Color.red())
+            
+            await self.play(ctx)
+        elif args.add:
+            query = args.add
+            if author.id in favoriteDict:
+                favoriteDict[author.id].append(query)
+            else :
+                favoriteDict[author.id] = [query]
+            await self.sendEmbed(ctx, "Successfully added " + query + " to " + author.name + "'s favorites", discord.Color.blue())
+        elif args.remove:
+            await self.sendEmbed(ctx, "Not implemented yet")
+        elif args.list:
+            if currentFav.songs <= 0:
+                await self.sendEmbed(ctx, "You don't have any favorite song", discord.Color.red())
+                return
+            
+            songList = author.name + "'s favorite song list :\n"
+            for song in currentFav.songs:
+                i = 1
+                songList += str(i) + ". " + song + "\n"
+                i += 1
+            await self.sendEmbed(ctx, songList, discord.Color.blue())

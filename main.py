@@ -3,7 +3,6 @@ from asyncio import sleep
 from dotenv import load_dotenv
 
 from keep_alive import Keep_alive
-
 from service.discord import DiscordBot
 
 #################################################################################
@@ -24,56 +23,64 @@ class FavoriteSong:
         self.songs = songs
 
 with open('./favorite.json') as f:
-    data = json.load(f)
+    favorites = json.load(f)
 
-data = data['data']
+favoriteDict = {}
+for fav in favorites['data']:
+    requester = fav['requester']
+    favoriteDict[requester] = fav['songs']
+
+print(favoriteDict['Gegek'])
+        
 
 #################################################################################
 
-Keep_alive()
+isTesting = 0
+if isTesting != 0:
+    Keep_alive()
 
-load_dotenv()
-isDevelopment = os.getenv("IS_DEVELOPMENT")
-bot = DiscordBot(isDevelopment)
-client = bot.client
+    load_dotenv()
+    isDevelopment = os.getenv("IS_DEVELOPMENT")
+    bot = DiscordBot(isDevelopment)
+    client = bot.client
 
-@client.command()
-async def add(ctx, *, url: str):
-    await bot.add(ctx, url=url)
-    
-@client.command()
-async def loop(ctx):
-    await bot.loop(ctx)
-    
-@client.command()
-async def play(ctx):
-    await bot.play(ctx)
+    @client.command()
+    async def add(ctx, *, url: str):
+        await bot.add(ctx, url=url)
+        
+    @client.command()
+    async def loop(ctx):
+        await bot.loop(ctx)
+        
+    @client.command()
+    async def play(ctx):
+        await bot.play(ctx)
 
-@client.command()
-async def queue(ctx):
-    await bot.queue(ctx)
+    @client.command()
+    async def queue(ctx):
+        await bot.queue(ctx)
 
-@client.command()
-async def stop(ctx):
-    await bot.stop(ctx)
-    
-@client.command()
-async def clear(ctx):
-    await bot.clear(ctx)
-    
-@client.command()
-async def remove(ctx, arg: int):
-    await bot.remove(ctx, arg)
+    @client.command()
+    async def stop(ctx):
+        await bot.stop(ctx)
+        
+    @client.command()
+    async def clear(ctx):
+        await bot.clear(ctx)
+        
+    @client.command()
+    async def remove(ctx, arg: int):
+        await bot.remove(ctx, arg)
 
-@client.command()
-async def skip(ctx):
-    await bot.skip(ctx)
+    @client.command()
+    async def skip(ctx):
+        await bot.skip(ctx)
 
-@client.event
-async def on_voice_state_update(member, before, after):
-    await bot.on_voice_state_update(member)
+    @client.event
+    async def on_voice_state_update(member, before, after):
+        await bot.on_voice_state_update(member)
 
-bot.run()
+    bot.run()
 
-FFMPEG_PATH = '/home/runner/libopus/node_modules/ffmpeg-static/ffmpeg'
+    FFMPEG_PATH = '/home/runner/libopus/node_modules/ffmpeg-static/ffmpeg'
 
