@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 
 def isUrl(url):
   regex = re.compile(
@@ -35,3 +36,9 @@ def formatHelpString(function):
     message += "\n"
   
   return message
+
+def timeDifference(target_time, second):
+    target_time = datetime.strptime(target_time, "%Y-%m-%d %H:%M:%S")
+    current_time = datetime.now()
+    time_difference = target_time - current_time
+    return time_difference.total_seconds() < second

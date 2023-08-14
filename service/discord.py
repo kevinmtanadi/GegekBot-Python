@@ -7,6 +7,8 @@ from asyncio import sleep
 import json
 import argparse
 import random
+from datetime import datetime
+import asyncio
 
 import sys
 sys.path.append('./pytube')
@@ -29,8 +31,9 @@ class DiscordBot:
     def __init__(self, isDevelopment):
         self.intents = discord.Intents.all()
         self.intents.voice_states = True
-        self.client = commands.Bot(command_prefix="!", intents=self.intents)
+        self.client = commands.Bot(command_prefix=os.getenv("DISCORD_COMMAND_PREFIX"), intents=self.intents)
         self.client.remove_command('help')
+        self.isDevelopment = isDevelopment
         if isDevelopment == 0 or isDevelopment == "0":
             discord.opus.load_opus("./libopus.so.0.8.0")
         self.isLooping = False
@@ -40,8 +43,11 @@ class DiscordBot:
         self.currentSong = None
         self.youtube = Youtube()
     
-    def run(self):
-        self.client.run(os.getenv("DISCORD_BOT_TOKEN"))
+    def run(self):        
+        if self.isDevelopment == 1 or self.isDevelopment == "1":
+            self.client.run(os.getenv("DISCORD_BOT_TOKEN"))
+        else:
+            self.client.run(os.getenv("DISCORD_TEST_TOKEN"))
         
     async def sendEmbed(self, ctx, message, color, author=None, title=None):
         embed = discord.Embed(title=title, description=message, color=color, )
@@ -55,6 +61,9 @@ class DiscordBot:
     
     def playMusic(self, voice):
         voice.play(discord.FFmpegPCMAudio(source=self.filename))
+        
+    async def on_ready(self):
+        await self.sendReminder()
 
     async def help(self, ctx):
         addHelp = HelpCommands(["add", "a"], "Add a new song to the song queue. It can receive title of the song, youtube link, or spotify link")
@@ -369,21 +378,25 @@ class DiscordBot:
         reminderDict = {}
         for note in notes['data']:
             requester = note['requester']
-            reminderDict[requester] = [note['message'], note['datetime']]
+            reminderDict[requester] = note['contents']
         
-        message = args[0]
-        datetime = args[1]
-
-        reminder = Reminder(ctx.message.author.id, message, datetime)
+        message = " ".join(args[0:len(args)-1])
+        dateStr = args[-1]
+        date = None
+        try:
+            date = datetime.strptime(dateStr, "%d/%m/%Y-%H:%M:%S")
+        except:
+            await self.sendEmbed(ctx, "Please provide a valid date in format [dd/mm/yyyy-hh:mm:ss]", discord.Color.red())
+            return
 
         if author.id in reminderDict:
-            reminderDict[author.id].append({"requester": author.id, "message": reminder.message, "datetime": reminder.datetime})
+            reminderDict[author.id].append({"message": message, "datetime": date.strftime("%Y-%m-%d %H:%M:%S")})
         else :
-            reminderDict[author.id] = [{"requester": author.id, "message": reminder.message, "datetime": reminder.datetime}]
+            reminderDict[author.id] = [{"message": message, "datetime": date.strftime("%Y-%m-%d %H:%M:%S")}]
         
         data = {"data":[]}
-        for requester, (message, datetime) in notes.items():
-            data["data"].append({"requester": requester, "message": message, "datetime": datetime})
+        for requester, contents in reminderDict.items():
+            data["data"].append({"requester": requester, "contents": contents})
 
         with open('./reminder.json', 'w') as f:
             json.dump(data, f)
@@ -398,3 +411,48 @@ class DiscordBot:
         else:
             return self.youtube.search(url)
     
+    # async def sendReminder(self):
+    #     print("Called")
+    #     while True:
+    #         with open('./reminder.json', 'r+') as f:
+    #             notes = json.load(f)
+    #         for note in notes['data']:
+    #             requester = note['requester']
+    #             contents = note['contents']
+    #             for item in contents:
+    #                 message = item['message']
+    #                 date = item['datetime']
+    #                 if timeDifference(date, 300):
+    #                     channel = self.client.get_channel(int(os.getenv("REMINDER_CHANNEL_ID")))
+    #                     embed = discord.Embed(description="**Reminder for <@" + str(requester) + ">**\n\n**Reminder:** " + message + "\n**Date:** " + date)
+    #                     await channel.send(embed=embed)
+                        
+    #         await asyncio.sleep(60)
+    
+    async def sendReminder(self):
+        while True:
+            if os.stat('./reminder.json').st_size == 0:
+                await asyncio.sleep(60)
+                continue
+            with open('./reminder.json', 'r+') as f:
+                notes = json.load(f)
+            sent_notes = []
+            for note in notes['data']:
+                requester = note['requester']
+                contents = note['contents']
+                unsent_contents = []
+                for item in contents:
+                    message = item['message']
+                    date = item['datetime']
+                    if timeDifference(date, 300):
+                        channel = self.client.get_channel(int(os.getenv("REMINDER_CHANNEL_ID")))
+                        embed = discord.Embed(description="**Reminder for <@" + str(requester) + ">**\n\n**Reminder:** " + message + "\n**Date:** " + date)
+                        await channel.send(embed=embed)
+                    else:
+                        unsent_contents.append(item)
+                if unsent_contents:
+                    sent_notes.append({'requester': requester, 'contents': unsent_contents})
+            notes['data'] = sent_notes
+            with open('./reminder.json', 'w') as f:
+                json.dump(notes, f)
+            await asyncio.sleep(60)

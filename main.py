@@ -1,6 +1,7 @@
 import os
 from asyncio import sleep
 from dotenv import load_dotenv
+import asyncio
 
 from keep_alive import Keep_alive
 from service.discord import DiscordBot
@@ -35,12 +36,15 @@ from service.discord import DiscordBot
 
 #################################################################################
 
+isDevelopment = os.getenv("IS_DEVELOPMENT")
+if isDevelopment == 0 or isDevelopment == "0":
+    Keep_alive()
+    
 isTesting = 1
 if isTesting != 0:
-    Keep_alive()
 
     load_dotenv()
-    isDevelopment = os.getenv("IS_DEVELOPMENT")
+    
     bot = DiscordBot(isDevelopment)
     client = bot.client
 
@@ -111,11 +115,19 @@ if isTesting != 0:
     @client.command()
     async def f(ctx, *, arg:str):
         await bot.favorite(ctx, arg=arg)
+        
+    @client.command()
+    async def remind(ctx, *, arg:str):
+        await bot.addReminder(ctx, arg=arg)
 
     @client.event
     async def on_voice_state_update(member, before, after):
         await bot.on_voice_state_update(member, before, after)
-
+    
+    @client.event
+    async def on_ready():
+        await bot.on_ready()
+    
     bot.run()
 
     FFMPEG_PATH = '/home/runner/libopus/node_modules/ffmpeg-static/ffmpeg'
