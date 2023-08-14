@@ -6,6 +6,7 @@ import copy
 from asyncio import sleep
 import json
 import argparse
+import random
 
 import sys
 sys.path.append('./pytube')
@@ -244,14 +245,18 @@ class DiscordBot:
             self.songQueue.remove(songToDelete)
             await self.sendEmbed(ctx, "Successfully deleted " + str(songToDelete.title) + " from to queue", discord.Color.blue())
       
+    # TODO HANDLE EMPTY favorite.json
     async def favorite(self, ctx, *, arg: str):
         author = ctx.message.author
 
         args = arg.split(" ")
         command = args[0]
 
-        with open('./favorite.json') as f:
-            favorites = json.load(f)
+        try:
+            with open('./favorite.json') as f:
+                favorites = json.load(f)
+        except json.decoder.JSONDecodeError:
+            favorites = {'data': []}
 
         favoriteDict = {}
         for fav in favorites['data']:
@@ -259,16 +264,34 @@ class DiscordBot:
             favoriteDict[requester] = fav['songs']
         
         if command == "play":
-            if author.id in favoriteDict:
-                for song in favoriteDict[author.id]:
-                    await self.add(ctx, url=song['url'])
-                await elf.sendEmbed(ctx, "Successfully added all favorite songs from " + author.name + "", discord.Color.blue())
-            else :
-                await self.sendEmbed(ctx, "You don't have any favorite song", discord.Color.red())
+            voiceChannel = author.voice
+
+            if not voiceChannel:
+                await self.sendEmbed(ctx, "You have to be in a voice channel to play a song!", discord.Color.red())
+                return
             
+            query = " ".join(args[1:])
+            if query != "random":
+                if author.id in favoriteDict:
+                    for song in favoriteDict[author.id]:
+                        await self.add(ctx, url=song['url'])
+                    await self.sendEmbed(ctx, "Successfully added all favorite songs from " + author.name + "", discord.Color.blue())
+                else :
+                    await self.sendEmbed(ctx, "You don't have any favorite song", discord.Color.red())
+            else:
+                if author.id in favoriteDict:
+                    for _ in range(len(favoriteDict[author.id])):
+                        song = random.choice(favoriteDict[author.id])
+                        await self.add(ctx, url=song['url'])
+                    await self.sendEmbed(ctx, "Successfully added all favorite songs from " + author.name + " randomly", discord.Color.blue())
+                else :
+                    await self.sendEmbed(ctx, "You don't have any favorite song", discord.Color.red())
             await self.play(ctx)
         if command == "add":
             query = " ".join(args[1:])
+            if query == "" or query == " ":
+                await self.sendEmbed(ctx, "Please provide a song name", discord.Color.red())
+                return
             song = self.youtube.search(query)
             if author.id in favoriteDict:
                 favoriteDict[author.id].append({"title": song.title, "url": song.url})
@@ -283,7 +306,38 @@ class DiscordBot:
                 json.dump(data, f)
             await self.sendEmbed(ctx, "Successfully added " + song.title + " to " + author.name + "'s favorites", discord.Color.blue())
         elif command == "remove":
-            await self.sendEmbed(ctx, "Not implemented yet")
+            query = " ".join(args[1:]).strip()
+            index = -1
+            if query == "" or query == " ":
+                await self.sendEmbed(ctx, "Please provide a song index from [!fav list]", discord.Color.red())
+                return
+            try:
+                index = int(query)
+            except:
+                await self.sendEmbed(ctx, "The song to be removed must be a number", discord.Color.red())
+            
+            if author.id not in favoriteDict or len(favoriteDict[author.id]) == 0:
+                await self.sendEmbed(ctx, "You don't have any favorite song", discord.Color.red())
+                return
+            
+            if len(favoriteDict[author.id]) < index:
+                await self.sendEmbed(ctx, "Index doesn't exist", discord.Color.red())
+                return
+            
+            for v in favoriteDict:
+                print(v)
+            songToRemove = favoriteDict[author.id][index - 1]
+            favoriteDict[author.id].pop(index - 1)
+
+            data = {"data":[]}
+            for requester, songs in favoriteDict.items():
+                data["data"].append({"requester": requester, "songs": songs})
+
+            print(data)
+            with open('./favorite.json', 'w') as f:
+                json.dump(data, f)
+            
+            await self.sendEmbed(ctx,"Successfully removed song " + songToRemove['title'] + " from your favorite", discord.Color.blue())
         elif command == "list":
             if author.id not in favoriteDict:
                 await self.sendEmbed(ctx, "You don't have any favorite song", discord.Color.red())
