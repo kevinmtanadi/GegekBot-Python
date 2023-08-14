@@ -99,14 +99,14 @@ if isTesting != 0:
         await bot.skip(ctx)
     
     @client.command()
-    async def favorite(ctx, arg):
-        await bot.favorite(ctx, arg)
+    async def favorite(ctx, *, arg: str):
+        await bot.favorite(ctx, arg=arg)
     @client.command()
-    async def fav(ctx, arg):
-        await bot.favorite(ctx, arg)
+    async def fav(ctx, *, arg: str):
+        await bot.favorite(ctx, arg=arg)
     @client.command()
-    async def f(ctx, arg):
-        await bot.favorite(ctx, arg)
+    async def f(ctx, *, arg:str):
+        await bot.favorite(ctx, arg=arg)
 
     @client.event
     async def on_voice_state_update(member, before, after):

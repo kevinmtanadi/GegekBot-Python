@@ -14,35 +14,8 @@ from pytube import YouTube
 
 from helper import *
 from service.spotify import Spotify
-
-class Song:
-    def __init__(self):
-        self.id = None
-        self.title = None
-        self.url = None
-        self.length = None
-        self.requester = None
-    
-    def setData(self, title=None, url=None, id=None, length=None, requester=None):
-        if title != None:
-            self.title = title
-        
-        if url != None:
-            self.url = url
-        
-        if id != None:
-            self.id = id
-        
-        if length != None:
-            self.length = length
-        
-        if requester != None:
-            self.requester = requester
-
-class FavoriteSong:
-    def __init__(self, requester, songs):
-        self.requester = requester
-        self.songs = songs
+from model.song import Song
+from service.youtube import Youtube
 
 class DiscordBot:
     def __init__(self, isDevelopment):
@@ -56,6 +29,7 @@ class DiscordBot:
         self.spotify = Spotify()
         self.filename = "audio.mp3"
         self.currentSong = None
+        self.youtube = Youtube()
     
     def run(self):
         self.client.run(os.getenv("DISCORD_BOT_TOKEN"))
@@ -91,12 +65,8 @@ class DiscordBot:
             return
     
         if not isUrl(url):
-            result = YoutubeSearch(url, max_results=1).to_dict()
-            for v in result:
-                youtube_url = "https://www.youtube.com" + v['url_suffix']
-                yt = YouTube(youtube_url)
-                song.setData(title=yt.title, url=youtube_url, id=id, length=yt.length)
-                self.songQueue.append(song)
+            song = self.youtube.search(url)
+            self.songQueue.append(song)
             id += 1
             m, s = divmod(yt.length, 60)
             duration = f"{m:02d}:{s:02d}"
@@ -106,18 +76,14 @@ class DiscordBot:
         if (isSpotify(url)):
             searchQuery = self.spotify.getSpotifyTitle(url)
             print(searchQuery)
-            result = YoutubeSearch(searchQuery, max_results=1).to_dict()
-            for v in result:
-                youtube_url = "https://www.youtube.com" + v['url_suffix']
-                yt = YouTube(youtube_url)
-                song.setData(title=yt.title, url=youtube_url, id=id, length=yt.length)
-                self.songQueue.append(song)
-                m, s = divmod(yt.length, 60)
-                duration = f"{m:02d}:{s:02d}"
-                await self.sendEmbed(ctx, successMessage.format(yt.title, duration), discord.Color.blue(), author=author)
+            song = self.youtube.search(url)
+            self.songQueue.append(song)
+            m, s = divmod(yt.length, 60)
+            duration = f"{m:02d}:{s:02d}"
+            await self.sendEmbed(ctx, successMessage.format(yt.title, duration), discord.Color.blue(), author=author)
         else:
             yt = YouTube(url)
-            song.setData(title=yt.title, url=youtube_url, id=id, length=yt.length)
+            song.setData(title=yt.title, url=url, id=id, length=yt.length)
             self.songQueue.append(song)
             m, s = divmod(yt.length, 60)
             duration = f"{m:02d}:{s:02d}"
@@ -278,16 +244,11 @@ class DiscordBot:
             self.songQueue.remove(songToDelete)
             await self.sendEmbed(ctx, "Successfully deleted " + str(songToDelete.title) + " from to queue", discord.Color.blue())
       
-    async def favorite(self, ctx, arg):
+    async def favorite(self, ctx, *, arg: str):
         author = ctx.message.author
 
-        parser = argparse.ArgumentParser(description='Favorite Command Parser')
-        parser.add_argument('--add', nargs='+', metavar='song_url', help='Add a song to favorites')
-        parser.add_argument('--play', action='store_true', help='Play all songs in favorites')
-        parser.add_argument('--remove', metavar='song_url', help='Remove a song from favorites')
-        parser.add_argument('--list', action='store_true', help='List all favorite songs')
-
-        args = parser.parse_args(arg.split())
+        args = arg.split(" ")
+        command = args[0]
 
         with open('./favorite.json') as f:
             favorites = json.load(f)
@@ -297,34 +258,40 @@ class DiscordBot:
             requester = fav['requester']
             favoriteDict[requester] = fav['songs']
         
-        currentFav = favoriteDict[author.id]
-
-        if args.play:            
+        if command == "play":
             if author.id in favoriteDict:
                 for song in favoriteDict[author.id]:
-                    await self.add(ctx, song)
-                self.sendEmbed(ctx, "Successfully added all favorite songs from " + author.name + "", discord.Color.blue())
+                    await self.add(ctx, url=song['url'])
+                await elf.sendEmbed(ctx, "Successfully added all favorite songs from " + author.name + "", discord.Color.blue())
             else :
                 await self.sendEmbed(ctx, "You don't have any favorite song", discord.Color.red())
             
             await self.play(ctx)
-        elif args.add:
-            query = args.add
+        if command == "add":
+            query = " ".join(args[1:])
+            song = self.youtube.search(query)
             if author.id in favoriteDict:
-                favoriteDict[author.id].append(query)
+                favoriteDict[author.id].append({"title": song.title, "url": song.url})
             else :
-                favoriteDict[author.id] = [query]
-            await self.sendEmbed(ctx, "Successfully added " + query + " to " + author.name + "'s favorites", discord.Color.blue())
-        elif args.remove:
+                favoriteDict[author.id] = [{"title": song.title, "url": song.url}]
+            
+            data = {"data":[]}
+            for requester, songs in favoriteDict.items():
+                data["data"].append({"requester": requester, "songs": songs})
+
+            with open('./favorite.json', 'w') as f:
+                json.dump(data, f)
+            await self.sendEmbed(ctx, "Successfully added " + song.title + " to " + author.name + "'s favorites", discord.Color.blue())
+        elif command == "remove":
             await self.sendEmbed(ctx, "Not implemented yet")
-        elif args.list:
-            if currentFav.songs <= 0:
+        elif command == "list":
+            if author.id not in favoriteDict:
                 await self.sendEmbed(ctx, "You don't have any favorite song", discord.Color.red())
                 return
             
             songList = author.name + "'s favorite song list :\n"
-            for song in currentFav.songs:
+            for song in favoriteDict[author.id]:
                 i = 1
-                songList += str(i) + ". " + song + "\n"
+                songList += str(i) + ". " + song['title'] + "\n"
                 i += 1
             await self.sendEmbed(ctx, songList, discord.Color.blue())
