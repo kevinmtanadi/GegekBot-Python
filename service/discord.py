@@ -69,9 +69,9 @@ class DiscordBot:
             song = self.youtube.search(url)
             self.songQueue.append(song)
             id += 1
-            m, s = divmod(yt.length, 60)
+            m, s = divmod(song.length, 60)
             duration = f"{m:02d}:{s:02d}"
-            await self.sendEmbed(ctx, successMessage.format(yt.title, duration), discord.Color.blue(), author=author)
+            await self.sendEmbed(ctx, successMessage.format(song.title, duration), discord.Color.blue(), author=author)
             return 
         
         if (isSpotify(url)):
@@ -81,7 +81,7 @@ class DiscordBot:
             self.songQueue.append(song)
             m, s = divmod(yt.length, 60)
             duration = f"{m:02d}:{s:02d}"
-            await self.sendEmbed(ctx, successMessage.format(yt.title, duration), discord.Color.blue(), author=author)
+            await self.sendEmbed(ctx, successMessage.format(song.title, duration), discord.Color.blue(), author=author)
         else:
             yt = YouTube(url)
             song.setData(title=yt.title, url=url, id=id, length=yt.length)
