@@ -279,9 +279,10 @@ class DiscordBot:
                 else :
                     await self.sendEmbed(ctx, "You don't have any favorite song", discord.Color.red())
             else:
+                songs = copy.deepcopy(favoriteDict[author.id])
+                random.shuffle(songs)
                 if author.id in favoriteDict:
-                    for _ in range(len(favoriteDict[author.id])):
-                        song = random.choice(favoriteDict[author.id])
+                    for song in songs:
                         await self.add(ctx, url=song['url'])
                     await self.sendEmbed(ctx, "Successfully added all favorite songs from " + author.name + " randomly", discord.Color.blue())
                 else :
