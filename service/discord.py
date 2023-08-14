@@ -47,6 +47,9 @@ class DiscordBot:
     
     def playMusic(self, voice):
         voice.play(discord.FFmpegPCMAudio(source=self.filename))
+
+    async def help(self, ctx):
+        await self.sendEmbed(ctx, "Not implemented yet", discord.Color.gold())
         
     async def add(self, ctx, *, url: str):
         id = 0
@@ -66,6 +69,7 @@ class DiscordBot:
             return
         
         song = self.getSong(url)
+        song.setData(requester=author)
         self.songQueue.append(song)
         await self.sendEmbed(ctx, successMessage.format(song.title, formatDuration(song.length)), discord.Color.blue(), author=author)
         return 
@@ -82,7 +86,7 @@ class DiscordBot:
             for s in songs:
                 yt = YouTube(s['url'])
                 song = Song()
-                song.setData(title=yt.title, url=s['url'], length=yt.length)
+                song.setData(title=yt.title, url=s['url'], length=yt.length, requester=author)
                 self.songQueue.append(song)
             return True
         except:
@@ -120,6 +124,7 @@ class DiscordBot:
         else:
             await self.sendEmbed(ctx, "There is currently no song in the queue! Use !add [music title or youtube link] to add a song to the queue", discord.Color.red())
     
+    # TODO when playing song, set self.currentSong to it and remove it from self.songQueue
     async def play(self, ctx):
         if len(self.songQueue) == 0:
             await self.sendEmbed(ctx, "There is currently no song in the queue! Use !add [music title or youtube link] to add a song to the queue", discord.Color.blue())
@@ -147,6 +152,7 @@ class DiscordBot:
 
         while len(self.songQueue) > 0:
             self.currentSong = self.songQueue[0]
+            self.songQueue.pop(0)
 
             out_file, errorCode = self.youtube.download(self.currentSong.url)
 
@@ -154,16 +160,14 @@ class DiscordBot:
                 os.rename(out_file, self.filename)
                 await self.sendEmbed(ctx, "Currently playing **" + self.currentSong.title + "**", discord.Color.blue())
                 self.playMusic(voice)
-                duration = copy.deepcopy(self.currentSong.length)
                 
-                while duration > 0:
+                while self.currentSong.length > 0:
                     await sleep(1)
-                    duration -= 1
+                    self.currentSong.length -= 1
 
                 if self.isLooping:
                     self.songQueue.append(self.currentSong)
 
-                self.songQueue.pop(0)
                 os.remove(self.filename)
             elif errorCode == 1:
                 await self.sendEmbed(ctx, "GegekBot lagi rusak, hubungi GEGEK", discord.Color.red())
@@ -189,7 +193,8 @@ class DiscordBot:
         await self.sendEmbed(ctx, "The audio is stopped.", discord.Color.red())
                 
     async def clear(self, ctx):
-        if len(self.songQueue) > 1:
+        if len(self.songQueue) > 0:
+            self.songQueue.clear()
             await self.sendEmbed(ctx, "The song queue is emptied", discord.Color.blue())
         else:
             await self.sendEmbed(ctx, "There is currently no song in the queue!", discord.Color.red())
@@ -205,8 +210,8 @@ class DiscordBot:
             await self.sendEmbed(ctx, "Song can only be skipped by the requester : " + self.currentSong.requester.name, discord.Color.red())
             return
         
-        currentSong = self.songQueue[0]
-        currentSong.length = 0
+        self.currentSong = self.songQueue[0]
+        self.currentSong.length = 0
         ctx.voice_client.stop()
     
     async def remove(self, ctx, arg: int):
@@ -304,8 +309,6 @@ class DiscordBot:
                 await self.sendEmbed(ctx, "Index doesn't exist", discord.Color.red())
                 return
             
-            for v in favoriteDict:
-                print(v)
             songToRemove = favoriteDict[author.id][index - 1]
             favoriteDict[author.id].pop(index - 1)
 
@@ -313,7 +316,6 @@ class DiscordBot:
             for requester, songs in favoriteDict.items():
                 data["data"].append({"requester": requester, "songs": songs})
 
-            print(data)
             with open('./favorite.json', 'w') as f:
                 json.dump(data, f)
             
