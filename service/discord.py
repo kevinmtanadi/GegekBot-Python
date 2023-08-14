@@ -64,29 +64,12 @@ class DiscordBot:
         if self.isLooping:
             await self.sendEmbed(ctx, "Stop the loop using /loop before adding any new song", discord.Color.red())
             return
-    
-        if not isUrl(url):
-            song = self.youtube.search(url)
-            self.songQueue.append(song)
-            id += 1
-            duration = formatDuration(yt.length)
-            await self.sendEmbed(ctx, successMessage.format(song.title, duration), discord.Color.blue(), author=author)
-            return 
         
-        if (isSpotify(url)):
-            searchQuery = self.spotify.getSpotifyTitle(url)
-            print(searchQuery)
-            song = self.youtube.search(url)
-            self.songQueue.append(song)
-            duration = formatDuration(yt.length)
-            await self.sendEmbed(ctx, successMessage.format(song.title, duration), discord.Color.blue(), author=author)
-        else:
-            yt = YouTube(url)
-            song.setData(title=yt.title, url=url, id=id, length=yt.length)
-            self.songQueue.append(song)
-            duration = formatDuration(yt.length)
-            await self.sendEmbed(ctx, successMessage.format(yt.title, duration), discord.Color.blue(), author=author)
-            
+        song = self.getSong(url)
+        self.songQueue.append(song)
+        await self.sendEmbed(ctx, successMessage.format(song.title, formatDuration(song.length)), discord.Color.blue(), author=author)
+        return 
+    
     async def addBulk(self, ctx, songs):
         author = ctx.message.author
         voiceChannel = author.voice
@@ -243,7 +226,6 @@ class DiscordBot:
             self.songQueue.remove(songToDelete)
             await self.sendEmbed(ctx, "Successfully deleted " + str(songToDelete.title) + " from to queue", discord.Color.blue())
       
-    # TODO HANDLE EMPTY favorite.json
     async def favorite(self, ctx, *, arg: str):
         author = ctx.message.author
 
@@ -289,13 +271,8 @@ class DiscordBot:
             if query == "" or query == " ":
                 await self.sendEmbed(ctx, "Please provide a song name", discord.Color.red())
                 return
-            song = Song()
-            if isSpotify(query):
-                title = self.spotify.getSpotifyTitle(query)
-                song = self.youtube.search(title)
-            else:
-                song = self.youtube.search(query)
-                
+            song = self.getSong(query)
+
             if author.id in favoriteDict:
                 favoriteDict[author.id].append({"title": song.title, "url": song.url})
             else :
@@ -352,3 +329,12 @@ class DiscordBot:
                 songList += str(i) + ". " + song['title'] + "\n"
                 i += 1
             await self.sendEmbed(ctx, songList, discord.Color.blue())
+    
+    def getSong(self, url):
+        if isSpotify(url):
+            title = self.spotify.getSpotifyTitle(url)
+            return self.youtube.search(title)
+        elif isUrl(url):
+            return self.youtube.getVideoData(url)
+        else:
+            return self.youtube.search(url)

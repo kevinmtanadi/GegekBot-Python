@@ -14,10 +14,13 @@ class Youtube:
         result = YoutubeSearch(query, max_results=1).to_dict()
         for v in result:
             youtube_url = "https://www.youtube.com" + v['url_suffix']
-            yt = YouTube(youtube_url)
-            song = Song()
-            song.setData(title=yt.title, url=youtube_url, id=id, length=yt.length)
-            return song
+            return self.getVideoData(youtube_url)
+    
+    def getVideoData(self, url):
+        yt = YouTube(url)
+        song = Song()
+        song.setData(title=yt.title, url=url, id=id, length=yt.length)
+        return song
 
     def download(self, url):
         try:
