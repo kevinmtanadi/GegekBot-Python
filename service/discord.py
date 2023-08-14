@@ -69,8 +69,7 @@ class DiscordBot:
             song = self.youtube.search(url)
             self.songQueue.append(song)
             id += 1
-            m, s = divmod(song.length, 60)
-            duration = f"{m:02d}:{s:02d}"
+            duration = formatDuration(yt.length)
             await self.sendEmbed(ctx, successMessage.format(song.title, duration), discord.Color.blue(), author=author)
             return 
         
@@ -79,15 +78,13 @@ class DiscordBot:
             print(searchQuery)
             song = self.youtube.search(url)
             self.songQueue.append(song)
-            m, s = divmod(yt.length, 60)
-            duration = f"{m:02d}:{s:02d}"
+            duration = formatDuration(yt.length)
             await self.sendEmbed(ctx, successMessage.format(song.title, duration), discord.Color.blue(), author=author)
         else:
             yt = YouTube(url)
             song.setData(title=yt.title, url=url, id=id, length=yt.length)
             self.songQueue.append(song)
-            m, s = divmod(yt.length, 60)
-            duration = f"{m:02d}:{s:02d}"
+            duration = formatDuration(yt.length)
             await self.sendEmbed(ctx, successMessage.format(yt.title, duration), discord.Color.blue(), author=author)
             
     async def addBulk(self, ctx, songs):
@@ -162,29 +159,17 @@ class DiscordBot:
 
         voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
 
-        if voice is None or not voice.is_connected():
+        if not self.isConnected(ctx):
             await channel.connect()
 
         while len(self.songQueue) > 0:
             self.currentSong = self.songQueue[0]
 
-            success = False
-            try:
-                print(self.currentSong.url)
-                yt = YouTube(self.currentSong.url)
-                audio = yt.streams.filter(only_audio=True).first()
-                out_file = audio.download(output_path=".")
-                success = True
-            except pytube.exceptions.RegexMatchError:
-                await self.sendEmbed(ctx, "Cannot download song, need to fix pytube library regex. Hubungi GEGEK", discord.Color.red())
-                self.songQueue.clear()
-                return
-            except pytube.exceptions.AgeRestrictedError:
-                await self.sendEmbed(ctx, "Current song **" + yt.title + "** is age restricted", discord.Color.red())
+            out_file, errorCode = self.youtube.download(self.currentSong.url)
 
-            if success:
+            if errorCode == 0:
                 os.rename(out_file, self.filename)
-                await self.sendEmbed(ctx, "Currently playing **" + yt.title + "**", discord.Color.blue())
+                await self.sendEmbed(ctx, "Currently playing **" + self.currentSong.title + "**", discord.Color.blue())
                 self.playMusic(voice)
                 duration = copy.deepcopy(self.currentSong.length)
                 
@@ -197,6 +182,10 @@ class DiscordBot:
 
                 self.songQueue.pop(0)
                 os.remove(self.filename)
+            elif errorCode == 1:
+                await self.sendEmbed(ctx, "GegekBot lagi rusak, hubungi GEGEK", discord.Color.red())
+            else:
+                await self.sendEmbed(ctx, "Current song is age restricted", discord.Color.red())
 
         await voice.disconnect()
     
@@ -205,24 +194,16 @@ class DiscordBot:
         voiceChannel = author.voice
         self.songQueue.clear()
         self.isLooping = False
+
+        voiceState = ctx.guild.voice_client
+
+        if not self.isConnected(ctx):
+            await self.sendEmbed(ctx, "The bot is not connected to a voice channel.", discord.Color.red())
+            return
         
-        if not voiceChannel:
-            await self.sendEmbed(ctx, "You have to be in a voice channel!", discord.Color.red())
-            return
-
-        voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
-        if not voice.is_connected():
-            await self.sendEmbed(ctx, "The bot is not connected to a voice channel.", discord.Color.red())
-            return
-
-        voice.stop()
-            
-        if voice.is_connected():
-            await self.sendEmbed(ctx, "The audio is stopped.", discord.Color.red())
-            await voice.disconnect()
-        else:
-            await self.sendEmbed(ctx, "The bot is not connected to a voice channel.", discord.Color.red())
-            await voice.disconnect()
+        voiceState.stop()
+        await voiceState.disconnect()
+        await self.sendEmbed(ctx, "The audio is stopped.", discord.Color.red())
                 
     async def clear(self, ctx):
         if len(self.songQueue) > 1:
@@ -308,7 +289,13 @@ class DiscordBot:
             if query == "" or query == " ":
                 await self.sendEmbed(ctx, "Please provide a song name", discord.Color.red())
                 return
-            song = self.youtube.search(query)
+            song = Song()
+            if isSpotify(query):
+                title = self.spotify.getSpotifyTitle(query)
+                song = self.youtube.search(title)
+            else:
+                song = self.youtube.search(query)
+                
             if author.id in favoriteDict:
                 favoriteDict[author.id].append({"title": song.title, "url": song.url})
             else :

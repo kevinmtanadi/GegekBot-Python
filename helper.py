@@ -16,3 +16,9 @@ def isUrl(url):
 
 def isSpotify(url):
   return url.startswith("https://open.spotify.com") or url.startswith("open.spotify.com")
+
+def formatDuration(length):
+  m, s = divmod(length, 60)
+  duration = f"{m:02d}:{s:02d}"
+
+  return duration
