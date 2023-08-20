@@ -1,5 +1,6 @@
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
+import os
 
 def isUrl(url):
   regex = re.compile(
@@ -40,5 +41,11 @@ def formatHelpString(function):
 def timeDifference(target_time, second):
     target_time = datetime.strptime(target_time, "%Y-%m-%d %H:%M:%S")
     current_time = datetime.now()
+    if os.getenv("IS_DEVELOPMENT") == "0":
+      current_time = current_time + timedelta(hours=7)
     time_difference = target_time - current_time
     return time_difference.total_seconds() < second
+
+def formatDatetime(dateStr):
+  return datetime.strptime(dateStr, "%Y-%m-%d %H:%M:%S").strftime("%d %b %Y %H:%M:%S")
+  

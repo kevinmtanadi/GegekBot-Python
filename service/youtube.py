@@ -27,7 +27,8 @@ class Youtube:
             yt = YouTube(url)
             audio = yt.streams.filter(only_audio=True).first()
             out_file = audio.download(output_path=".")
-        except pytube.exceptions.RegexMatchError:
+        except pytube.exceptions.RegexMatchError as e:
+            print(e)
             return None, 1
         except pytube.exceptions.AgeRestrictedError:
             return None, 2

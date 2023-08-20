@@ -5,21 +5,18 @@ from youtube_search import YoutubeSearch
 import copy
 from asyncio import sleep
 import json
-import argparse
 import random
 from datetime import datetime
 import asyncio
 
 import sys
 sys.path.append('./pytube')
-import pytube
 from pytube import YouTube
 
 from helper import *
 from service.spotify import Spotify
 from service.youtube import Youtube
 from model.song import Song
-from model.reminder import Reminder
 
 class HelpCommands:
     def __init__(self, commands, helpMessage):
@@ -44,13 +41,15 @@ class DiscordBot:
         self.youtube = Youtube()
     
     def run(self):        
-        if self.isDevelopment == 1 or self.isDevelopment == "1":
+        if self.isDevelopment == 0 or self.isDevelopment == "0":
             self.client.run(os.getenv("DISCORD_BOT_TOKEN"))
         else:
             self.client.run(os.getenv("DISCORD_TEST_TOKEN"))
         
     async def sendEmbed(self, ctx, message, color, author=None, title=None):
-        embed = discord.Embed(title=title, description=message, color=color, )
+        embed = discord.Embed(description=message, color=color)
+        if title:
+            embed.title = title
         if author:
             embed.set_footer(text="Requested by {}".format(author.name), icon_url=author.avatar_url)
         await ctx.send(embed=embed)
@@ -199,6 +198,7 @@ class DiscordBot:
                 os.remove(self.filename)
             elif errorCode == 1:
                 await self.sendEmbed(ctx, "GegekBot lagi rusak, hubungi GEGEK", discord.Color.red())
+                await self.stop(ctx=ctx)
             else:
                 await self.sendEmbed(ctx, "Current song is age restricted", discord.Color.red())
 
@@ -446,8 +446,7 @@ class DiscordBot:
                     date = item['datetime']
                     if timeDifference(date, 300):
                         channel = self.client.get_channel(int(os.getenv("REMINDER_CHANNEL_ID")))
-                        embed = discord.Embed(description="**Reminder for <@" + str(requester) + ">**\n\n**Reminder:** " + message + "\n**Date:** " + date)
-                        await channel.send(embed=embed)
+                        await channel.send("**Reminder for <@" + str(requester) + ">**\n\n**Reminder:** " + message + "\n**Date:** " + formatDatetime(date))
                     else:
                         unsent_contents.append(item)
                 if unsent_contents:
